@@ -4,11 +4,24 @@ import java.io.EOFException
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Framing, Sink, Source}
+import akka.stream.scaladsl.{Concat, Framing, Sink, Source}
 import akka.util.ByteString
 import com.advancedtelematic.interview.wordcount.{CharacterReader, FastCharacterReaderImpl}
 
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
+
+object Main extends App {
+  private implicit val system: ActorSystem = ActorSystem("WordCount")
+  private implicit val ec: ExecutionContext = system.dispatcher
+
+  private val wordCounter = new WordCount(new FastCharacterReaderImpl())
+
+  wordCounter
+    .process
+    .map(_.map(r => println(s"${r._1} - ${r._2}")))
+    .flatMap(_ => system.terminate())
+}
 
 class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext, actorSystem: ActorSystem) {
 
@@ -41,8 +54,8 @@ class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext,
       }
   }
 
-  private def sortByOccurrencesDescending(wordOccurences: Seq[(String, Int)]): Seq[(String, Int)] = {
-    wordOccurences.sortWith((a, b) => {
+  private def sortByOccurrencesDescending(wordOccurrences: Seq[(String, Int)]): Seq[(String, Int)] = {
+    wordOccurrences.sortWith((a, b) => {
       a._2 > b._2 || (a._2 == b._2 && a._1.compareTo(b._1) < 0)
     })
   }
