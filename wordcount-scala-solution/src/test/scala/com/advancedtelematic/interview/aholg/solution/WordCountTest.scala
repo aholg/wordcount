@@ -2,14 +2,21 @@ package com.advancedtelematic.interview.aholg.solution
 
 import java.io.EOFException
 
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
 import com.advancedtelematic.interview.wordcount.CharacterReader
 import com.advancedtelematic.interview.wordcount.aholg.solution.WordCount
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.funsuite.{AnyFunSuite, AnyFunSuiteLike}
 import org.scalatest.matchers.should.Matchers
 
-class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures with MockFactory {
+class WordCountTest
+  extends TestKit(ActorSystem("WordCountTest"))
+  with AnyFunSuiteLike
+  with Matchers
+  with ScalaFutures
+  with MockFactory {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -41,7 +48,7 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures with Moc
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res shouldBe Seq(("A", 1))
+      res shouldBe Seq(("a", 1))
     }
   }
 
@@ -64,10 +71,10 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures with Moc
 
     whenReady(counter.process) { res =>
       res should contain theSameElementsInOrderAs Map(
-        ("wordA", 1),
-        ("wordB", 1),
-        ("wordC", 1),
-        ("wordD", 1)
+        ("worda", 1),
+        ("wordb", 1),
+        ("wordc", 1),
+        ("wordd", 1)
       ).toSeq
     }
   }
@@ -80,10 +87,42 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures with Moc
 
     whenReady(counter.process) { res =>
       res should contain theSameElementsInOrderAs Seq(
-        ("wordD", 2),
-        ("wordA", 1),
-        ("wordB", 1),
-        ("wordC", 1)
+        ("wordd", 2),
+        ("worda", 1),
+        ("wordb", 1),
+        ("wordc", 1)
+      )
+    }
+  }
+
+  test("should separate by spaces and newlines") {
+    val words = "wordD wordA wordB\nwordC\nwordD"
+    val reader: CharacterReader = testReader(words)
+
+    val counter = new WordCount(reader)
+
+    whenReady(counter.process) { res =>
+      res should contain theSameElementsInOrderAs Seq(
+        ("wordd", 2),
+        ("worda", 1),
+        ("wordb", 1),
+        ("wordc", 1)
+      )
+    }
+  }
+
+  test("should filter out commas and semicolons") {
+    val words = "wordD, wordA; wordB\nwordC\nwordD"
+    val reader: CharacterReader = testReader(words)
+
+    val counter = new WordCount(reader)
+
+    whenReady(counter.process) { res =>
+      res should contain theSameElementsInOrderAs Seq(
+        ("wordd", 2),
+        ("worda", 1),
+        ("wordb", 1),
+        ("wordc", 1)
       )
     }
   }

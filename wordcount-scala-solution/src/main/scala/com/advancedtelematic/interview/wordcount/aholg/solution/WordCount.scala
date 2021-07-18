@@ -10,31 +10,39 @@ import com.advancedtelematic.interview.wordcount.CharacterReader
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext) {
+class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext, actorSystem: ActorSystem) {
 
-  implicit val system: ActorSystem = ActorSystem("WordCount")
+  private val charIterator: Iterator[Char] = {
+    Iterator.continually {
+      val c = characterReader.nextCharacter()
+      if (c == '\n') ' '
+      else c
+    }
+  }
 
   def process: Future[Seq[(String, Int)]] = {
     source
-      .via(Framing.delimiter(ByteString('\n'), 256, allowTruncation = true).map(_.utf8String))
-      .filter(_.nonEmpty)
+      .via(Framing.delimiter(ByteString(' '), 256, allowTruncation = true).map(_.utf8String.toLowerCase))
       .runWith(Sink.seq[String])
       .map(_.groupBy(identity).mapValues(_.size).toSeq)
       .map(sortByOccurrencesDescending)
   }
 
-  private def sortByOccurrencesDescending(wordOccurences: Seq[(String, Int)]): Seq[(String, Int)] = {
-    wordOccurences.sortWith((a, b) => a._2 > b._2 || (a._2 == b._2 && a._1 < b._1))
-  }
-
   private def source: Source[ByteString, NotUsed] = {
     Source
-      .fromIterator(() => Iterator.continually(characterReader.nextCharacter()))
+      .fromIterator(() => charIterator)
+      .filterNot(c => c == ',' || c == ';')
       .map(ByteString(_))
       .recover {
         case _: EOFException =>
           characterReader.close()
           ByteString("")
       }
+  }
+
+  private def sortByOccurrencesDescending(wordOccurences: Seq[(String, Int)]): Seq[(String, Int)] = {
+    wordOccurences.sortWith((a, b) => {
+      a._2 > b._2 || (a._2 == b._2 && a._1.compareTo(b._1) < 0)
+    })
   }
 }
