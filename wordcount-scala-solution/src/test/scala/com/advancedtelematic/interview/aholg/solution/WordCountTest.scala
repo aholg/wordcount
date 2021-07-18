@@ -4,11 +4,12 @@ import java.io.EOFException
 
 import com.advancedtelematic.interview.wordcount.CharacterReader
 import com.advancedtelematic.interview.wordcount.aholg.solution.WordCount
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
+class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures with MockFactory {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -20,6 +21,17 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
 
     whenReady(counter.process) { res =>
       res shouldBe Seq.empty
+    }
+  }
+
+  test("should call close on end of stream") {
+    val reader: CharacterReader = stub[CharacterReader]
+
+    val counter = new WordCount(reader)
+    (reader.nextCharacter _).when().throws(new EOFException())
+
+    whenReady(counter.process) { _ =>
+      (reader.close _).verify().once()
     }
   }
 
@@ -51,7 +63,7 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res.toSeq should contain theSameElementsInOrderAs Map(
+      res should contain theSameElementsInOrderAs Map(
         ("wordA", 1),
         ("wordB", 1),
         ("wordC", 1),
@@ -67,7 +79,7 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res.toSeq should contain theSameElementsInOrderAs Seq(
+      res should contain theSameElementsInOrderAs Seq(
         ("wordD", 2),
         ("wordA", 1),
         ("wordB", 1),
