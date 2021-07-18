@@ -111,8 +111,8 @@ class WordCountTest
     }
   }
 
-  test("should filter out commas and semicolons") {
-    val words = "wordD, wordA; wordB\nwordC\nwordD"
+  test("should filter out commas, semicolons and dots") {
+    val words = "wordD, wordA; wordB\nwordC\nwordD."
     val reader: CharacterReader = testReader(words)
 
     val counter = new WordCount(reader)
@@ -126,6 +126,23 @@ class WordCountTest
       )
     }
   }
+
+  test("should filter out quotes but not apostrophes") {
+    val words = "'wordD wordA word'B\nwordC\nwordD'"
+    val reader: CharacterReader = testReader(words)
+
+    val counter = new WordCount(reader)
+
+    whenReady(counter.process) { res =>
+      res should contain theSameElementsInOrderAs Seq(
+        ("wordd", 2),
+        ("word'b", 1),
+        ("worda", 1),
+        ("wordc", 1)
+      )
+    }
+  }
+
 
   private def testReader(data: String) = {
     new CharacterReader {

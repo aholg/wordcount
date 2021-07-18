@@ -6,7 +6,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Framing, Sink, Source}
 import akka.util.ByteString
-import com.advancedtelematic.interview.wordcount.CharacterReader
+import com.advancedtelematic.interview.wordcount.{CharacterReader, FastCharacterReaderImpl}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,9 +20,11 @@ class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext,
     }
   }
 
+  private val forbiddenCharactersRegex = "('\\s|\\s'|[;,]|^'|'$|\\.)"
+
   def process: Future[Seq[(String, Int)]] = {
     source
-      .via(Framing.delimiter(ByteString(' '), 256, allowTruncation = true).map(_.utf8String.toLowerCase))
+      .via(Framing.delimiter(ByteString(' '), 256, allowTruncation = true).map(_.utf8String.toLowerCase.replaceAll(forbiddenCharactersRegex, "")))
       .runWith(Sink.seq[String])
       .map(_.groupBy(identity).mapValues(_.size).toSeq)
       .map(sortByOccurrencesDescending)
@@ -31,7 +33,6 @@ class WordCount(characterReader: CharacterReader)(implicit ex: ExecutionContext,
   private def source: Source[ByteString, NotUsed] = {
     Source
       .fromIterator(() => charIterator)
-      .filterNot(c => c == ',' || c == ';')
       .map(ByteString(_))
       .recover {
         case _: EOFException =>
