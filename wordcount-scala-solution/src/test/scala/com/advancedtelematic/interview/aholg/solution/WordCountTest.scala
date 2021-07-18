@@ -19,7 +19,7 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res shouldBe Map.empty
+      res shouldBe Seq.empty
     }
   }
 
@@ -29,7 +29,7 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res shouldBe Map("A" -> 1)
+      res shouldBe Seq(("A", 1))
     }
   }
 
@@ -40,7 +40,39 @@ class WordCountTest extends AnyFunSuite with Matchers with ScalaFutures {
     val counter = new WordCount(reader)
 
     whenReady(counter.process) { res =>
-      res shouldBe Map("word1" -> 3)
+      res shouldBe Seq(("word1", 3))
+    }
+  }
+
+  test("should return words with same count in alphabetical order") {
+    val words = "wordD\nwordA\nwordB\nwordC"
+    val reader: CharacterReader = testReader(words)
+
+    val counter = new WordCount(reader)
+
+    whenReady(counter.process) { res =>
+      res.toSeq should contain theSameElementsInOrderAs Map(
+        ("wordA", 1),
+        ("wordB", 1),
+        ("wordC", 1),
+        ("wordD", 1)
+      ).toSeq
+    }
+  }
+
+  test("should return words with the highest count first and alphabetically ordered") {
+    val words = "wordD\nwordA\nwordB\nwordC\nwordD"
+    val reader: CharacterReader = testReader(words)
+
+    val counter = new WordCount(reader)
+
+    whenReady(counter.process) { res =>
+      res.toSeq should contain theSameElementsInOrderAs Seq(
+        ("wordD", 2),
+        ("wordA", 1),
+        ("wordB", 1),
+        ("wordC", 1)
+      )
     }
   }
 
