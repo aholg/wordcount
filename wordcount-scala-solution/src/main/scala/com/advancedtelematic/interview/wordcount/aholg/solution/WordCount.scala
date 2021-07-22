@@ -70,12 +70,12 @@ class WordCount(characterReaders: Seq[CharacterReader])
     characterReaders
       .map(cr =>
         Source.fromIterator(() => charIterator(cr))
+          .async
           .map(c => ByteString(c))
           .via(Framing.delimiter(ByteString(' '), 256, allowTruncation = true))
       )
       .reduce(_ merge _)
       .map(w => stripNonWordCharacters(w.utf8String))
-      .async
   }
 
   private def charIterator(characterReader: CharacterReader): Iterator[Char] = {
